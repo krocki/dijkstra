@@ -3,8 +3,8 @@ TARGETS=dijkstra
 
 CC=gcc
 LD=gcc
-CFLAGS=-gdwarf -Wfatal-errors -O0
-LFLAGS=-gdwarf
+CFLAGS=-g -Wfatal-errors -O0
+LFLAGS=-g
 HEADERS:=$(wildcard *.h) Makefile
 
 all: $(TARGETS)
