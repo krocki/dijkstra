@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "heap.h"
+#include "timer.h"
 
 #define DEBUG 0
 #define INFINITY (1.0/0.0)
@@ -18,15 +19,19 @@ typedef struct {
   edge **e;
 } graph;
 
+/* for sorting edges accordding to their indices */
 int edge_cmp(const void *a, const void *b) {
+
   edge *ea = (edge*)a;
   edge *eb = (edge*)b;
+
   if (ea->i < eb->i) return -1;
   if (ea->i > eb->i) return 1;
   if (ea->j < eb->j) return -1;
   if (ea->j > eb->j) return 1;
   if (ea->w < eb->w) return -1;
   if (ea->w > eb->w) return 1;
+
   return 0; /* unlikely */
 }
 
@@ -41,11 +46,13 @@ void graph_read(graph *g, char *fname) {
   printf("reading %s...\n", fname);
 
   edge *e;
+
   int ok=0;
+
   if (1 == fscanf(f, "%d\n", &(g->num_v))) {
     if (1 == fscanf(f, "%d\n", &(g->num_e))) {
       e = calloc(g->num_e, sizeof(edge));
-      g->n = (int*) calloc( g->num_v, sizeof(int)); 
+      g->n = (int*) calloc( g->num_v, sizeof(int));
       for (int x=0; x<g->num_e; x++) {
         if (3 != fscanf(f, "%d %d %f\n",
           &(e[x].i), &(e[x].j), &(e[x].w))) {
@@ -69,6 +76,7 @@ void graph_read(graph *g, char *fname) {
   }
 
   fclose(f);
+
   if (0==ok) {
     fprintf(stderr,
       "something wrong with the file\n");
@@ -98,7 +106,21 @@ void graph_read(graph *g, char *fname) {
   }
 
   free(e);
+}
 
+void print_edges(int n, edge *e) {
+  for (int x=0; x<n; x++) {
+    printf("%d %d %f\n", e[x].i, e[x].j, e[x].w);
+  }
+}
+
+void dump_edges(int n, edge *e, char *fname) {
+  FILE *f = fopen(fname, "w");
+  if (!f) return;
+  for (int x=0; x<n; x++) {
+    fprintf(f, "%d %d %f\n", e[x].i, e[x].j, e[x].w);
+  }
+  fclose(f);
 }
 
 void graph_show(graph *g) {
@@ -136,31 +158,19 @@ void graph_free(graph *g) {
 
 }
 
-int main(int argc, char **argv) {
-
-  if (argc < 2) {
-    printf("usage: %s file\n",
-      argv[0]);
-    return -1;
-  }
-
-  char *fname = argv[1];
-
-  graph g;
-  graph_read(&g, fname);
-  graph_show(&g);
+void graph_sssp(graph *g, char *oname) {
 
   heap h;
   heap_init(&h, 1);
 
+  int src = g->e[0][0].i;
   int *visited =
-    (int*) calloc(g.num_v, sizeof(int));
-  float *d =
-    (float*) malloc(g.num_v * sizeof (float));
-  for (int j=0; j<g.num_v; j++)
-    d[j] = INFINITY;
-  int src = g.e[0][0].i;
-  d[src] = 0;
+    (int*) calloc(g->num_v, sizeof(int));
+  edge *d =
+    (edge*) malloc(g->num_v * sizeof (edge));
+  for (int j=0; j<g->num_v; j++)
+    d[j] = (edge){src, j, INFINITY};
+  d[src].w = 0;
 
   //
   int done=0, iter=0;
@@ -170,24 +180,18 @@ int main(int argc, char **argv) {
     // mark as final
     visited[src] = 1;
     // distance so far to src
-    float current_d = d[src];
-    for (int i=0; i<g.n[src]; i++) {
-      edge *e = &(g.e[src][i]);
+    float current_d = d[src].w;
+    for (int i=0; i<g->n[src]; i++) {
+      edge *e = &(g->e[src][i]);
       if (0 == visited[e->j]) {
         float new_d = current_d + e->w;
-        if (d[e->j] > new_d) {
-          d[e->j] = new_d;
+        if (d[e->j].w > new_d) {
+          d[e->j].w = new_d;
           kv tmp = {e->j, new_d};
           heap_insert(&h, &tmp);
         }
       }
     } // for i
-
-    for (int i=0; i<g.num_v; i++) {
-      printf("%d: v=%d, d=%f, iter=%d\n",
-        i, visited[i], d[i], iter);
-    }
-    heap_print(&h, 0);
 
     int new_src;
     do {
@@ -205,10 +209,34 @@ int main(int argc, char **argv) {
     iter++;
   }
 
+  if (NULL != oname) dump_edges(g->num_v, d, oname);
+  else {
+    puts("distances");
+    print_edges(g->num_v, d);
+  }
+
   //
   free(visited);
   free(d);
   heap_release(&h);
+}
+
+int main(int argc, char **argv) {
+
+  if (argc < 2) {
+    printf("usage: %s file [out]\n",
+      argv[0]);
+    return -1;
+  }
+
+  char *fname = argv[1];
+  char *oname = NULL;
+
+  if (argc > 2) oname = argv[2];
+
+  graph g;
+  timeit(graph_read(&g, fname));
+  timeit(graph_sssp(&g, oname));
   graph_free(&g);
 
   return 0;
