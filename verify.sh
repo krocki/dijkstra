@@ -1,6 +1,6 @@
 #!/bin/bash
 TESTS=(./data/tinyEWD)
-METHODS=(./dijkstra ./csr)
+METHODS=(./dijkstra_adj ./dijkstra_csr)
 
 for t in ${TESTS[@]}; do
   for x in ${METHODS[@]}; do
