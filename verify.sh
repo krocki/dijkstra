@@ -1,13 +1,16 @@
 #!/bin/bash
 TESTS=(./data/tinyEWD)
+METHODS=(./dijkstra ./csr)
 
 for t in ${TESTS[@]}; do
-  ./dijkstra $t.txt $t.out
-  diff $t.out $t.ref
-  if [ $? == 0 ]
-  then
-  echo "$t: RESULT OK"
-  else
-  echo "!!! $t: FAIL"
-  fi
+  for x in ${METHODS[@]}; do
+    $x $t.txt $t.out
+    diff $t.out $t.ref
+    if [ $? == 0 ]
+    then
+    echo "$x : $t: RESULT OK"
+    else
+    echo "!!! $x : $t: FAIL"
+    fi
+  done
 done

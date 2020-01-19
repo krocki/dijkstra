@@ -1,5 +1,5 @@
 .SUFFIXES:
-TARGETS=dijkstra
+TARGETS=dijkstra csr
 
 CC=gcc
 LD=gcc
